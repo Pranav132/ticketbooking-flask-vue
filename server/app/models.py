@@ -1,14 +1,17 @@
 from app import db
+from datetime import datetime, timedelta
+from sqlalchemy import DateTime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     password_hash = db.Column(db.String(128))
+    email = db.Column(db.String(120), index=True, unique=True)  
     is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='sha256')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -33,8 +36,14 @@ class Show(db.Model):
     tags = db.Column(db.String(128))
     ticket_price = db.Column(db.Float)
     theatre_id = db.Column(db.Integer, db.ForeignKey('theatre.id'))
+    start_time = db.Column(db.DateTime)
+    duration = db.Column(db.Time) # duration in hours and minutes
     tags = db.relationship('Tag', secondary=showtags, lazy='subquery',
         backref=db.backref('shows', lazy=True))
+    
+    @property
+    def end_time(self):
+        return self.start_time + timedelta(hours=self.duration.hour, minutes=self.duration.minute)
     
 class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)

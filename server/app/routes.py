@@ -195,3 +195,63 @@ def delete_show(show_id):
 
     return jsonify({'message': 'Show deleted'}), 200
 
+
+@main.route('/search/theatre', methods=['GET'])
+@jwt_required()
+def search_theatre():
+    from .models import Theatre
+    location = request.args.get('location', '')
+    capacity = request.args.get('capacity', '')
+    theatres = Theatre.query.filter(Theatre.place.contains(location)).all().filter(Theatre.place.contains(capacity)).all()
+    return jsonify([theatre.to_dict() for theatre in theatres]), 200
+
+
+@main.route('/search/show', methods=['GET'])
+@jwt_required()
+def search_show():
+    from .models import Show
+
+    tag = request.args.get('tag', '')
+    rating = request.args.get('rating', None)
+    
+    query = Show.query
+    if tag:
+        query = query.filter(Show.tags.any(name=tag))
+    if rating:
+        query = query.filter(Show.rating >= float(rating))
+
+    shows = query.all()
+    return jsonify([show.to_dict() for show in shows]), 200
+
+@main.route('/theatre/<int:theatre_id>', methods=['GET'])
+@jwt_required()
+def get_theatre(theatre_id):
+    from .models import Theatre
+    theatre = Theatre.query.get(theatre_id)
+    if theatre is None:
+        return jsonify({'message': 'Theatre not found.'}), 404
+    return jsonify(theatre.to_dict()), 200
+
+
+@main.route('/book', methods=['POST'])
+@jwt_required()
+def book_show():
+    from .models import Show, Booking
+    from . import db
+    data = request.get_json()
+    show_id = data.get('show_id')
+    num_tickets = data.get('num_tickets')
+    show = Show.query.get(show_id)
+    if show is None:
+        return jsonify({'message': 'Show not found.'}), 404
+    
+    theatre = show.theatre
+    if theatre.capacity < num_tickets:
+        return jsonify({'message': 'Not enough seats available.'}), 400
+
+    user_id = get_jwt_identity()
+    booking = Booking(user_id=user_id, show_id=show_id, number_of_tickets=num_tickets)
+    db.session.add(booking)
+    theatre.capacity -= num_tickets
+    db.session.commit()
+    return jsonify({'message': 'Booking successful.'}), 200

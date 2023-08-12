@@ -23,6 +23,15 @@ class Theatre(db.Model):
     capacity = db.Column(db.Integer)
     shows = db.relationship('Show', backref='theatre', lazy='dynamic')
 
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'place': self.place,
+            'capacity':self.capacity,
+        }
+
 # Create a helper table 'showtags' for many-to-many relationship between Show and Tag
 showtags = db.Table('showtags',
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),

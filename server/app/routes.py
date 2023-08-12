@@ -18,19 +18,32 @@ def admin_required(f):
 
 main = Blueprint('main', __name__)
 
-# DELETE LATER FOR REFERENCE
 @main.route('/')
 def index():
     from . import db
     return jsonify(message="Hello, World!")
 
-@main.route('/admin-endpoint', methods=['GET'])
-@jwt_required()
-@admin_required
-def protected_admin_route():
-    return "Hi Admin!", 200
+@main.route('/admin-login', methods=['POST'])
+def admin_login():
+    '''
+    Admin user login route
+    '''
+    from .models import User
+    data = request.get_json()
+    user = User.query.filter_by(username=data['username']).first()
 
-# END DELETE LATER
+    if not user:
+        return jsonify({'message': 'User not found.'}), 401
+
+    if not user.check_password(data['password']):
+        return jsonify({'message': 'Incorrect password.'}), 401
+    
+    if not user.is_admin:
+        return jsonify({'message': 'User is not an admin.'}), 401
+
+    access_token = create_access_token(identity=user.id)
+    return jsonify(access_token=access_token), 200
+
 
 @main.route('/signup', methods=['POST'])
 def signup():
@@ -69,6 +82,9 @@ def login():
 
     if not user.check_password(data['password']):
         return jsonify({'message': 'Incorrect password.'}), 401
+    
+    if user.is_admin:
+        return jsonify({'message': 'Admin user - please login through admin form!'}), 401
 
     access_token = create_access_token(identity=user.id)
     return jsonify(access_token=access_token), 200
@@ -83,8 +99,28 @@ def add_theatre():
     '''
     from .models import Theatre
     from . import db
+
     data = request.get_json()
-    new_theatre = Theatre(name=data['name'], place=data['place'], capacity=data['capacity'])
+    capacity = data['capacity']
+    place = data['place']
+    name = data['name']
+
+    if isinstance(capacity, int):
+        capacity_value = capacity
+    elif isinstance(capacity, str) and capacity.isdigit():
+        capacity_value = int(capacity)
+    else:
+        capacity_value = 0
+
+    if not name or not place or not capacity:
+        return jsonify({'message': 'Invalid data provided. Please try again'}), 400
+
+    # Check for duplicate theatre based on name and place
+    existing_theatre = Theatre.query.filter_by(name=name, place=place).first()
+    if existing_theatre:
+        return jsonify({'message': 'Theatre with the same name and place already exists'}), 400
+
+    new_theatre = Theatre(name=name, place=place, capacity=capacity_value)
     db.session.add(new_theatre)
     db.session.commit()
     return jsonify({'message': 'New theatre created'}), 201
@@ -202,7 +238,13 @@ def search_theatre():
     from .models import Theatre
     location = request.args.get('location', '')
     capacity = request.args.get('capacity', '')
-    theatres = Theatre.query.filter(Theatre.place.contains(location)).all().filter(Theatre.place.contains(capacity)).all()
+    if isinstance(capacity, int):
+        capacity_value = capacity
+    elif isinstance(capacity, str) and capacity.isdigit():
+        capacity_value = int(capacity)
+    else:
+        capacity_value = 0
+    theatres = Theatre.query.filter(Theatre.place.contains(location)).filter(Theatre.capacity >= capacity_value).all()
     return jsonify([theatre.to_dict() for theatre in theatres]), 200
 
 

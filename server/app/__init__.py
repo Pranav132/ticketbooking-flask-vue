@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from .routes import main
 from .celery import make_celery
-from datetime import timedelta
+from flask_cors import CORS
 
 # Initialize Extensions
 db = SQLAlchemy()
@@ -16,6 +16,7 @@ def create_app():
 
     db.init_app(app)
     jwt.init_app(app)
+    CORS(app)
     app.config.update(
         CELERY_BROKER_URL='redis://localhost:6379',
         CELERY_RESULT_BACKEND='redis://localhost:6379',

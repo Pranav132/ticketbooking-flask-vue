@@ -3,6 +3,9 @@
     <div v-if="errorMessage" class="alert alert-danger" role="alert">
       {{ errorMessage }}
     </div>
+    <div v-if="successMessage" class="alert alert-success" role="alert">
+      {{ successMessage }}
+    </div>
     <div class="row my-3">
       <div class="col d-flex justify-content-end">
         <router-link to="/add-theatre">
@@ -29,9 +32,18 @@
       <h1>No theatres found.</h1>
     </div>
     <!-- Display theatres -->
-    <div v-else class="row pt-3">
+    <div v-else class="row pt-4">
       <div v-for="theatre in theatres" :key="theatre.id" class="col-sm-4 py-2">
-        <div class="card h-100">
+        <div class="card h-100 position-relative">
+          <!-- Delete button -->
+          <button
+            class="btn btn-danger position-absolute btn-sm top-0 end-0 m-1"
+            @click="deleteTheatre(theatre.id)"
+            style="width: 30px; height: 30px"
+          >
+            <i class="bi bi-trash"></i>
+          </button>
+
           <div class="card-body">
             <h3 class="card-title">{{ theatre.name }}</h3>
             <p class="card-text">{{ theatre.place }}</p>
@@ -56,6 +68,7 @@ export default {
       theatres: [],
       loading: true,
       errorMessage: "",
+      successMessage: "",
     };
   },
   async created() {
@@ -75,17 +88,21 @@ export default {
         if (response.ok) {
           this.theatres = res;
           this.errorMessage = "";
+          this.successMessage = "";
         } else {
           console.error("Failed to fetch theatre data");
           // Safely access the message property
           if (res.msg) {
             if (res.msg === "Token has expired") {
               this.errorMessage = "Token has expired. Please log in again.";
+              this.successMessage = "";
             } else {
               this.errorMessage = res.msg;
+              this.successMessage = "";
             }
           } else {
             this.errorMessage = res.message;
+            this.successMessage = "";
           }
         }
       });
@@ -95,6 +112,50 @@ export default {
     } finally {
       this.loading = false;
     }
+  },
+  methods: {
+    async deleteTheatre(theatreId) {
+      try {
+        const token = localStorage.getItem("jwt");
+        const response = await fetch(BASE_URL + "theatre/" + theatreId, {
+          method: "DELETE",
+          headers: {
+            Authorization: "Bearer " + token,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const res = await response.json();
+
+        if (response.ok) {
+          // Filter out the deleted theatre from the list without fetching all theatres again
+          this.theatres = this.theatres.filter(
+            (theatre) => theatre.id !== theatreId
+          );
+          this.successMessage = res.message;
+        } else {
+          console.error("Failed to fetch theatre data");
+          this.successMessage = "";
+          // Safely access the message property
+          if (res.msg) {
+            if (res.msg === "Token has expired") {
+              this.errorMessage = "Token has expired. Please log in again.";
+              this.successMessage = "";
+            } else {
+              this.errorMessage = res.msg;
+              this.successMessage = "";
+            }
+          } else {
+            this.errorMessage = res.message;
+            this.successMessage = "";
+          }
+        }
+      } catch (error) {
+        this.successMessage = "";
+        console.error("Error deleting theatre:", error);
+        this.errorMessage = "Error: " + error.toString();
+      }
+    },
   },
 };
 </script>

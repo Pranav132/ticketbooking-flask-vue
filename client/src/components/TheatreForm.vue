@@ -27,6 +27,7 @@
                 class="form-control"
                 placeholder="Theatre Name"
                 v-model="name"
+                required
               />
             </div>
           </div>
@@ -40,6 +41,7 @@
                 class="form-control"
                 placeholder="Theatre Place"
                 v-model="place"
+                required
               />
             </div>
           </div>
@@ -53,6 +55,7 @@
                 class="form-control"
                 placeholder="Capacity"
                 v-model="capacity"
+                required
               />
             </div>
           </div>

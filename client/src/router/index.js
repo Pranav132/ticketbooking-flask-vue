@@ -5,20 +5,19 @@ import RegisterView from '../views/RegisterView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import AddTheatreView from '../views/AddTheatreView.vue'
+import TheatreView from '../views/TheatreView.vue'
+import EditTheatreView from '../views/EditTheatreView.vue'
+import AddShowView from '../views/AddShowView.vue'
+import EditShowView from '../views/EditShowView.vue'
+import UserDashboardView from '../views/UserDashboardView.vue'
+import UserTheatreView from '../views/UserTheatreView.vue'
+import TheatreWithShowsView from '../views/TheatreWithShowsView.vue'
 
 const routes = [
   {
     path: '/',
     name: 'home',
     component: HomeView
-  },
-  {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
   },
   {
     path:'/login',
@@ -56,7 +55,23 @@ const routes = [
   {
     path: '/dashboard',
     name: 'dashboard',
-    component: <div>Dashboard</div>,
+    component: UserDashboardView,
+    meta: {
+      requiresAuth: true,
+    }
+  },
+  {
+    path: '/theatres',
+    name: 'theatres',
+    component: UserTheatreView,
+    meta: {
+      requiresAuth: true,
+    }
+  },
+  {
+    path: '/view-theatre/:id',
+    name: 'view-theatre',
+    component: TheatreWithShowsView,
     meta: {
       requiresAuth: true,
     }
@@ -70,6 +85,42 @@ const routes = [
       requiresAdmin: true
     },
   },
+  {
+    path: '/theatre/:id',
+    name: 'theatre-admin',
+    component: TheatreView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    },
+  },
+  {
+    path: '/edit-theatre/:id',
+    name: 'edit-theatre-admin',
+    component: EditTheatreView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    },
+  },
+  {
+    path: '/add-show/:theatreId',
+    name: 'add-show',
+    component: AddShowView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    },
+  },
+  {
+    path: '/edit-show/:id',
+    name: 'edit-show',
+    component: EditShowView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  }
 ]
 
 const router = createRouter({

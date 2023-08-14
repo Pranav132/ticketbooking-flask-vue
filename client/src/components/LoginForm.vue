@@ -16,6 +16,7 @@
                 class="form-control"
                 placeholder="Username"
                 v-model="username"
+                required
               />
             </div>
           </div>
@@ -27,6 +28,7 @@
                 class="form-control"
                 placeholder="Password"
                 v-model="password"
+                required
               />
             </div>
           </div>

@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import or_, Time
 
 def admin_required(f):
     '''
@@ -175,17 +176,33 @@ def add_show():
     User must be authenticated as an admin
     '''
 
-    from .models import Show
+    from .models import Show, Tag
     from . import db
 
-    data = request.get_json()
-    start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S') # convert the string to datetime
-    duration = datetime.strptime(data['duration'], '%H:%M').time() # convert the string to time
-    new_show = Show(name=data['name'], rating=data['rating'], ticket_price=data['ticket_price'], theatre_id=data['theatre_id'], start_time=start_time, duration=duration)
-    db.session.add(new_show)
-    db.session.commit()
+    try:
+        data = request.get_json()
+        start_time = datetime.strptime(data['startTime'], '%Y-%m-%dT%H:%M')
+        duration = datetime.strptime(data['duration'], '%H:%M').time() # convert the string to time
+        new_show = Show(name=data['name'], ticket_price=data['ticketPrice'], theatre_id=data['theatreId'], start_time=start_time, duration=duration)
+        tags_data = data['tags']
+        tags = []
+        for tag_name in tags_data:
+            tag_name = tag_name.strip()  # Removing any leading or trailing whitespaces
+            tag = Tag.query.filter_by(name=tag_name).first()
+            if not tag:  # If tag doesn't exist, create it
+                tag = Tag(name=tag_name)
+                db.session.add(tag)
+            tags.append(tag)
 
-    return jsonify({'message': 'New show created'}), 201
+        new_show.tags = tags  # Add tags to show
+
+        db.session.add(new_show)
+        db.session.commit()
+
+        return jsonify({'message': 'New show created'}), 201
+    
+    except Exception as e:
+        return jsonify({'message': str(e)})
 
 @main.route('/show/<int:show_id>', methods=['PUT'])
 @jwt_required()
@@ -196,22 +213,40 @@ def edit_show(show_id):
     User must be authenticated as an admin
     '''
 
-    from .models import Show
+    from .models import Show, Tag
     from . import db
 
-    data = request.get_json()
-    show = Show.query.get_or_404(show_id)
-    show.name = data.get('name', show.name)
-    show.rating = data.get('rating', show.rating)
-    show.ticket_price = data.get('ticket_price', show.ticket_price)
-    show.theatre_id = data.get('theatre_id', show.theatre_id)
-    if 'start_time' in data:
-        show.start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S') # convert the string to datetime
-    if 'duration' in data:
-        show.duration = datetime.strptime(data['duration'], '%H:%M').time() # convert the string to time
-    db.session.commit()
-    return jsonify({'message': 'Show updated'}), 200
+    try:
+        data = request.get_json()
+        show = Show.query.get_or_404(show_id)
+        show.name = data.get('name', show.name)
+        show.ticket_price = data.get('ticketPrice', show.ticket_price)
+        show.theatre_id = data.get('theatreId', show.theatre_id)
 
+        if 'startTime' in data:
+            show.start_time = datetime.strptime(data['startTime'], '%Y-%m-%dT%H:%M')
+        if 'duration' in data:
+            show.duration = datetime.strptime(data['duration'], '%H:%M').time() # convert the string to time
+
+        if 'tags' in data:
+            tags_data = data['tags']
+            tags = []
+            for tag_name in tags_data:
+                tag_name = tag_name.strip()  # Removing any leading or trailing whitespaces
+                tag = Tag.query.filter_by(name=tag_name).first()
+                if not tag:  # If tag doesn't exist, create it
+                    tag = Tag(name=tag_name)
+                    db.session.add(tag)
+                tags.append(tag)
+
+            show.tags = tags  # Update tags of show
+
+        db.session.commit()
+
+        return jsonify({'message': 'Show updated successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'message': str(e)}), 401
 
 @main.route('/show/<int:show_id>', methods=['DELETE'])
 @jwt_required()
@@ -226,6 +261,11 @@ def delete_show(show_id):
     from . import db
 
     show = Show.query.get_or_404(show_id)
+
+    for tag in show.tags:
+        if len(tag.shows) == 1:  # Check if this is the only show with this tag
+            db.session.delete(tag)
+
     db.session.delete(show)
     db.session.commit()
 
@@ -238,29 +278,58 @@ def search_theatre():
     from .models import Theatre
     location = request.args.get('location', '')
     capacity = request.args.get('capacity', '')
+    name = request.args.get('name', '')
     if isinstance(capacity, int):
         capacity_value = capacity
     elif isinstance(capacity, str) and capacity.isdigit():
         capacity_value = int(capacity)
     else:
         capacity_value = 0
-    theatres = Theatre.query.filter(Theatre.place.contains(location)).filter(Theatre.capacity >= capacity_value).all()
+    theatres = Theatre.query.filter(Theatre.name.contains(name)).filter(Theatre.place.contains(location)).filter(Theatre.capacity >= capacity_value).all()
     return jsonify([theatre.to_dict() for theatre in theatres]), 200
 
+# helper to check if a value is a number
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
 @main.route('/search/show', methods=['GET'])
 @jwt_required()
 def search_show():
-    from .models import Show
+    from .models import Show, Review, Tag
+    from . import db
 
-    tag = request.args.get('tag', '')
     rating = request.args.get('rating', None)
+    name = request.args.get('name', None)
+    max_price = request.args.get('max_price', None)
+    theatre_id = request.args.get('theatre_id')
+
+    if not theatre_id:
+        return jsonify({"error": "Theatre ID is required"}), 400
+
+    query = Show.query.filter_by(theatre_id=theatre_id)
     
-    query = Show.query
-    if tag:
-        query = query.filter(Show.tags.any(name=tag))
-    if rating:
-        query = query.filter(Show.rating >= float(rating))
+    tags = request.args.get('tag', "").split(',')
+    tags_list = [tag.strip() for tag in tags if tag.strip()]
+
+    if tags and tags != ['']:
+        conditions = [Show.tags.any((Tag.name != None) & (Tag.name.ilike(f"%{tag.strip()}%"))) for tag in tags_list if tag]
+        query = query.filter(or_(*conditions))
+
+    if name:
+        query = query.filter(Show.name.ilike(f'%{name}%'))
+
+    if max_price:
+        query = query.filter(Show.ticket_price <= float(max_price))
+        
+
+    if rating and is_number(rating):
+        # Filter shows by their average rating
+        subquery = db.session.query(Review.show_id, db.func.avg(Review.rating).label('avg_rating')).group_by(Review.show_id).subquery()
+        query = query.join(subquery, subquery.c.show_id == Show.id).filter(subquery.c.avg_rating >= float(rating))
 
     shows = query.all()
     return jsonify([show.to_dict() for show in shows]), 200
@@ -274,6 +343,26 @@ def get_theatre(theatre_id):
         return jsonify({'message': 'Theatre not found.'}), 404
     return jsonify(theatre.to_dict()), 200
 
+@main.route('/show/<int:show_id>', methods=['GET'])
+@jwt_required()
+def get_show(show_id):
+    from .models import Show
+    show = Show.query.get(show_id)
+    if show is None:
+        return jsonify({'message': 'Show not found.'}), 404
+    return jsonify(show.to_dict()), 200
+
+@main.route('/get_theatre_shows/<int:theatre_id>', methods=['GET'])
+@jwt_required()
+def get_shows_by_theatre(theatre_id):
+    from .models import Show
+
+    shows = Show.query.filter_by(theatre_id=theatre_id).all()
+
+    # Convert each show to its dictionary representation
+    shows_list = [show.to_dict() for show in shows]
+
+    return jsonify(shows_list), 200
 
 @main.route('/book', methods=['POST'])
 @jwt_required()
@@ -297,3 +386,35 @@ def book_show():
     theatre.capacity -= num_tickets
     db.session.commit()
     return jsonify({'message': 'Booking successful.'}), 200
+
+@main.route('/user/bookings', methods=['GET'])
+@jwt_required()
+def get_user_bookings():
+    from .models import Show, Booking, Theatre
+    from . import db
+
+    # Get the user's ID from the JWT token
+    user_id = get_jwt_identity()
+    
+    # Query for the user's bookings
+    bookings = Booking.query.filter_by(user_id=user_id).all()
+
+    # For each booking, get the associated Show and Theatre info
+    result = []
+    for booking in bookings:
+        show = Show.query.get(booking.show_id)
+        
+        # Retrieve theatre information using the theatre_id from the Show model
+        theatre = Theatre.query.get(show.theatre_id)
+        
+        result.append({
+            'booking_id': booking.id,
+            'show_name': show.name,
+            'show_timing': show.start_time,
+            'show_duration': show.duration,
+            'theatre_name': theatre.name,
+            'theare_place': theatre.place,
+            'number_of_tickets': booking.number_of_tickets
+        })
+
+    return jsonify(result)

@@ -1,14 +1,21 @@
 <template>
-  <div class="register-page">
+  <div class="show-form">
     <div v-if="errorMessage" class="alert alert-danger" role="alert">
       {{ errorMessage }}
     </div>
     <div v-if="successMessage" class="alert alert-success" role="alert">
       {{ successMessage }}
     </div>
+    <div class="row m-3 background-white">
+      <div class="col d-flex justify-content-end">
+        <router-link :to="'/theatre/' + $route.params.theatreId">
+          <button class="btn btn-primary">Back to Theatre</button>
+        </router-link>
+      </div>
+    </div>
     <main>
-      <div class="register-block">
-        <h1>REGISTER</h1>
+      <div class="showform-block">
+        <h1>ADD A SHOW</h1>
 
         <form @submit.prevent="handleSubmit">
           <hr class="hr-xs" />
@@ -18,8 +25,8 @@
               <input
                 type="text"
                 class="form-control"
-                placeholder="Choose a username"
-                v-model="username"
+                placeholder="Show Name"
+                v-model="name"
                 required
               />
             </div>
@@ -32,8 +39,8 @@
               <input
                 type="text"
                 class="form-control"
-                placeholder="Your email address"
-                v-model="email"
+                placeholder="Tags (comma separated)"
+                v-model="tags"
                 required
               />
             </div>
@@ -44,10 +51,48 @@
           <div class="form-group">
             <div class="input-group">
               <input
-                type="password"
+                type="number"
                 class="form-control"
-                placeholder="Choose a password"
-                v-model="password"
+                placeholder="Ticket Price"
+                v-model="ticketPrice"
+                required
+              />
+            </div>
+          </div>
+
+          <hr class="hr-xs" />
+
+          <div class="form-group">
+            <div class="input-group">
+              <input
+                type="datetime-local"
+                class="form-control"
+                placeholder="Start Time"
+                v-model="startTime"
+                required
+              />
+            </div>
+          </div>
+
+          <hr class="hr-xs" />
+
+          <div class="form-group">
+            <div class="input-group">
+              <input
+                type="number"
+                class="form-control"
+                placeholder="Duration (hours)"
+                v-model="durationHours"
+                min="0"
+                required
+              />
+              <input
+                type="number"
+                class="form-control"
+                placeholder="Duration (minutes)"
+                v-model="durationMinutes"
+                min="0"
+                max="59"
                 required
               />
             </div>
@@ -56,7 +101,7 @@
           <hr class="hr-xs" />
 
           <button class="btn btn-primary btn-block" type="submit">
-            Register
+            Add Show
           </button>
         </form>
       </div>
@@ -65,12 +110,18 @@
 </template>
 
 <style>
-.register-page main {
+.show-form {
+  height: 80vh;
+}
+.showform-block {
+  padding: 20px 100px !important;
+}
+.showform-page main {
   width: 100%;
   max-width: 460px;
   margin: 8% auto 5%;
 }
-.register-block {
+.showform-block {
   background-color: #fff;
   padding: 30px;
   -webkit-box-shadow: 0 3px 50px 0 rgba(0, 0, 0, 0.1);
@@ -78,89 +129,89 @@
   text-align: center;
   border-radius: 5px;
 }
-.register-block h1,
-.register-block h6 {
+.showform-block h1,
+.showform-block h6 {
   font-family: Open Sans, sans-serif;
   color: #96a2b2;
   letter-spacing: 1px;
 }
-.register-block h1 {
+.showform-block h1 {
   font-size: 22px;
   margin-bottom: 60px;
   margin-top: 40px;
 }
-.register-block h6 {
+.showform-block h6 {
   font-size: 11px;
   text-transform: uppercase;
   margin-top: 0;
 }
-.register-block .form-group {
+.showform-block .form-group {
   margin-top: 15px;
   margin-bottom: 15px;
 }
-.register-block .form-control,
-.register-block .form-control:focus,
-.register-block .input-group-addon,
-.register-block .input-group-addon:focus {
+.showform-block .form-control,
+.showform-block .form-control:focus,
+.showform-block .input-group-addon,
+.showform-block .input-group-addon:focus {
   background-color: transparent;
   border: none;
 }
-.register-block .form-control {
+.showform-block .form-control {
   font-size: 17px;
   border-radius: 0px;
 }
-.register-block input:-webkit-autofill {
+.showform-block input:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 1000px #fff inset;
   -webkit-text-fill-color: #818a91;
   -webkit-transition: none;
   -o-transition: none;
   transition: none;
 }
-.register-block .input-group-addon {
+.showform-block .input-group-addon {
   color: #29aafe;
   font-size: 19px;
   opacity: 0.5;
 }
-.register-block .btn-block {
+.showform-block .btn-block {
   margin-top: 30px;
   padding: 15px;
   background: #29aafe;
   border-color: #29aafe;
 }
-.register-block .hr-xs {
+.showform-block .hr-xs {
   margin-top: 5px;
   margin-bottom: 5px;
 }
-.register-footer {
+.showform-footer {
   margin-top: 60px;
   opacity: 0.5;
   -webkit-transition: opacity 0.3s ease-in-out;
   -o-transition: opacity 0.3s ease-in-out;
   transition: opacity 0.3s ease-in-out;
 }
-.register-footer:hover {
+.showform-footer:hover {
   opacity: 1;
 }
-.register-links {
+.showform-links {
   padding: 15px 5px 0;
   font-size: 13px;
   color: #96a2b2;
 }
-.register-links:after {
+.showform-links:after {
   content: "";
   display: table;
   clear: both;
 }
-.register-links a {
+.showform-links a {
   color: #96a2b2;
   opacity: 0.9;
 }
-.register-links a:hover {
+.showform-links a:hover {
   color: #29aafe;
   opacity: 1;
 }
 @media (max-width: 767px) {
-  .register-page main {
+  .showform-page main {
     position: static;
     top: auto;
     left: auto;
@@ -169,7 +220,7 @@
     transform: none;
     padding: 30px 15px;
   }
-  .register-block {
+  .showform-block {
     padding: 20px;
   }
 }
@@ -234,62 +285,75 @@
 </style>
 
 <script>
-function validateEmail(email) {
-  var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-  return regex.test(email);
-}
-
 import { BASE_URL } from "../../globals.js";
 
-const fetchRegister = (credentials) => {
-  return fetch(BASE_URL + "signup", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(credentials),
-  }).then((response) =>
-    response.json().then((data) => ({
-      data: data,
-      status: response.status,
-    }))
-  );
-};
-
 export default {
-  // eslint-disable-next-line
-  name: "RegisterForm",
+  name: "ShowForm",
   data() {
     return {
-      username: "",
-      password: "",
-      email: "",
+      name: "",
+      tags: "",
+      ticketPrice: 0,
+      startTime: "",
+      durationHours: 0,
+      durationMinutes: 0,
       errorMessage: "",
       successMessage: "",
     };
   },
   methods: {
-    handleSubmit() {
-      const credentials = {
-        username: this.username,
-        password: this.password,
-        email: this.email,
+    async handleSubmit() {
+      const durationFormatted = `${String(this.durationHours).padStart(
+        2,
+        "0"
+      )}:${String(this.durationMinutes).padStart(2, "0")}`;
+
+      const data = {
+        name: this.name,
+        tags: [
+          ...new Set(
+            this.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter((tag) => tag !== "")
+          ),
+        ],
+        ticketPrice: this.ticketPrice,
+        theatreId: this.$route.params.theatreId,
+        startTime: this.startTime,
+        duration: durationFormatted,
       };
 
-      if (!validateEmail(this.email)) {
-        this.errorMessage = "Please enter a valid email";
-        return;
-      }
+      try {
+        const response = await fetch(BASE_URL + "show", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + localStorage.getItem("jwt"),
+          },
+          body: JSON.stringify(data),
+        });
 
-      fetchRegister(credentials).then((res) => {
-        if (res.status === 201) {
-          this.errorMessage = ""; // Clear any error messages
-          this.successMessage = "You have been registered! Please log in now.";
+        const res = await response.json();
+
+        if (response.status === 201) {
+          this.errorMessage = "";
+          this.successMessage = "Show added!";
         } else {
           this.successMessage = "";
-          this.errorMessage = res.data.message;
+          if (res.msg) {
+            this.errorMessage =
+              res.msg === "Token has expired"
+                ? "Token has expired. Please log in again."
+                : res.msg;
+          } else {
+            this.errorMessage = res.message || "Error adding the show.";
+          }
         }
-      });
+      } catch (error) {
+        this.errorMessage = "An error occurred: " + error.toString();
+        this.successMessage = "";
+      }
     },
   },
 };

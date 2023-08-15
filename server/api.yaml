@@ -1,0 +1,96 @@
+routes:
+  - path: "/admin-login"
+    method: "POST"
+    description: "Admin user login route"
+    requires_login: false
+
+  - path: "/signup"
+    method: "POST"
+    description: "Signup Route"
+    requires_login: false
+
+  - path: "/login"
+    method: "POST"
+    description: "Default user login route"
+    requires_login: false
+
+  - path: "/theatre"
+    method: "POST"
+    description: "Route to add a theatre. User must be authenticated as admin."
+    requires_login: true
+    role_required: "admin"
+
+  - path: "/theatre/<int:theatre_id>"
+    method: "PUT"
+    description: "Route to edit existing theatre. User must be authenticated as an admin user."
+    requires_login: true
+    role_required: "admin"
+
+  - path: "/theatre/<int:theatre_id>"
+    method: "DELETE"
+    description: "Route to delete an existing theatre. User must be authenticated as admin."
+    requires_login: true
+    role_required: "admin"
+
+  - path: "/show"
+    method: "POST"
+    description: "Create a new show"
+    requires_login: true
+    role_required: "admin"
+
+  - path: "/show/<int:show_id>"
+    method: "PUT"
+    description: "Edit an existing show"
+    requires_login: true
+    role_required: "admin"
+
+  - path: "/show/<int:show_id>"
+    method: "DELETE"
+    description: "Delete an existing show"
+    requires_login: true
+    role_required: "admin"
+
+  - path: "/search/theatre"
+    method: "GET"
+    description: "Search theatres based on criteria"
+    requires_login: true
+
+  - path: "/search/show"
+    method: "GET"
+    description: "Search shows based on criteria"
+    requires_login: true
+
+  - path: "/theatre/<int:theatre_id>"
+    method: "GET"
+    description: "Get theatre details by its ID"
+    requires_login: true
+
+  - path: "/show/<int:show_id>"
+    method: "GET"
+    description: "Get show details by its ID"
+    requires_login: true
+
+  - path: "/get_theatre_shows/<int:theatre_id>"
+    method: "GET"
+    description: "Get shows by theatre ID"
+    requires_login: true
+
+  - path: "/book"
+    method: "POST"
+    description: "Book a show"
+    requires_login: true
+
+  - path: "/user/bookings"
+    method: "GET"
+    description: "Get bookings of the authenticated user"
+    requires_login: true
+
+  - path: "/shows/<int:show_id>/review"
+    method: "POST"
+    description: "Add a review for a show"
+    requires_login: true
+
+  - path: "/booking/<int:booking_id>"
+    method: "GET"
+    description: "Get details of a booking by its ID"
+    requires_login: true

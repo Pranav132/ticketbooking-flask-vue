@@ -136,7 +136,9 @@ export default {
         name: this.show.name,
         tags: this.tags.split(",").map((tag) => tag.trim()),
         ticketPrice: this.show.ticket_price,
-        startTime: this.show.start_time,
+        startTime: /\d{2}:\d{2}:00$/.test(this.show.start_time)
+          ? this.show.start_time.split(" ").join("T").slice(0, -3)
+          : this.show.start_time.split(" ").join("T"),
         duration: this.show.duration.match(/\d{2}:\d{2}:\d{2}/)
           ? this.show.duration.slice(0, -3)
           : this.show.duration,

@@ -166,7 +166,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const loggedIn = localStorage.getItem('jwt');  // change this according to how you are storing user login information
+  const loggedIn = localStorage.getItem('jwt'); 
   const adminLocalStorage = localStorage.getItem('isAdmin');
   const isAdmin =  adminLocalStorage &&
   adminLocalStorage ===

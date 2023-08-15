@@ -17,7 +17,6 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ticket_booking.db'
     app.config['JWT_SECRET_KEY'] ='6c7bf36236b2d12c3341541cd4b89da870ff1f8684f75dd1ca19f960dce5c9bd'
 
-    # Initialize Extensions within the create_app function
     db.init_app(app)
     jwt.init_app(app)
     CORS(app)
@@ -59,7 +58,6 @@ def create_app():
 
     return app
 
-# If this file is executed directly, start the Flask development server
 if __name__ == "__main__":
     app = create_app()
     app.run(debug=True)

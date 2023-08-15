@@ -493,7 +493,7 @@ def add_review(show_id):
         return jsonify({'message': 'No input data provided'}), 400
     if 'rating' not in data:
         return jsonify({'message': 'Rating is required'}), 400
-    if not (1 <= data['rating'] <= 5):  # Assuming a rating from 1 to 5
+    if not (1 <= data['rating'] <= 5): 
         return jsonify({'message': 'Rating must be between 1 and 5'}), 400
 
     # Check if the user has already reviewed this show
@@ -504,7 +504,7 @@ def add_review(show_id):
     # Create a new review
     review = Review(
         rating=data['rating'],
-        text=data.get('text', ''),  # It's okay if the text is empty or not provided
+        text=data.get('text', ''), 
         user_id=user_id,
         show_id=show_id
     )
@@ -527,7 +527,6 @@ def get_booking_details(booking_id):
         if not booking:
             return jsonify({"message": "Booking not found."}), 404
 
-        # Assuming you have a to_dict() method in your Booking model
         booking_details = booking.to_dict()
 
         # Fetch show details

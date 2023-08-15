@@ -53,6 +53,9 @@
               class="btn btn-outline-secondary"
               >View</router-link
             >
+            <button class="btn btn-primary m-3" @click="getReport(theatre.id)">
+              Export csv
+            </button>
           </div>
         </div>
       </div>
@@ -155,6 +158,46 @@ export default {
       } catch (error) {
         this.successMessage = "";
         console.error("Error deleting theatre:", error);
+        this.errorMessage = "Error: " + error.toString();
+      }
+    },
+    async getReport(theatreId) {
+      try {
+        const token = localStorage.getItem("jwt");
+        const response = await fetch(
+          BASE_URL + "export_theatre_as_csv/" + theatreId,
+          {
+            method: "GET",
+            headers: {
+              Authorization: "Bearer " + token,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const res = await response.json();
+
+        if (response.ok) {
+          this.successMessage = "Check your email for the report!";
+          this.errorMessage = "";
+        } else {
+          console.error("Failed to fetch theatre data");
+          this.successMessage = "";
+          // Safely access the message property
+          if (res.msg) {
+            if (res.msg === "Token has expired") {
+              this.errorMessage = "Token has expired. Please log in again.";
+              this.successMessage = "";
+            } else {
+              this.errorMessage = res.msg;
+              this.successMessage = "";
+            }
+          } else {
+            this.errorMessage = res.message;
+            this.successMessage = "";
+          }
+        }
+      } catch (error) {
+        this.successMessage = "";
         this.errorMessage = "Error: " + error.toString();
       }
     },

@@ -4,6 +4,8 @@ from functools import wraps
 from datetime import datetime, timedelta
 from sqlalchemy import or_
 
+from .tasks import send_daily_reminders, send_monthly_reports, export_theatre_as_csv
+
 def admin_required(f):
     '''
     Decorator to ensure that a user accessing an admin route is authenticated as an admin
@@ -604,3 +606,23 @@ def get_summary():
 
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+
+@main.route('/trigger_daily_reminders', methods=['POST'])
+@jwt_required()
+def trigger_daily_reminders_route():
+    send_daily_reminders.delay()  
+    return jsonify(message="Daily reminder task triggered!"), 202
+
+@main.route('/trigger_monthly_reports', methods=['POST'])
+@jwt_required()
+def trigger_monthly_reports_route():
+    send_monthly_reports.delay()  
+    return jsonify(message="Monthly report task triggered!"), 202
+
+@main.route('/export_theatre_as_csv/<int:theatre_id>', methods=['GET'])
+@jwt_required()
+@admin_required
+def export_theatre_route(theatre_id):
+    export_theatre_as_csv(theatre_id)
+    return jsonify("CSV Created"), 200

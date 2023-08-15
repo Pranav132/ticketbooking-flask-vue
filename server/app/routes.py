@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from functools import wraps
 from datetime import datetime, timedelta
-from sqlalchemy import or_, Time
+from sqlalchemy import or_
 
 def admin_required(f):
     '''
@@ -166,6 +166,24 @@ def delete_theatre(theatre_id):
 
     return jsonify({'message': 'Theatre deleted'}), 200
 
+def overlapping_shows(theatre_id, start_time, end_time, excluding_show_id=None):
+    """ 
+    Return overlapping shows for given theatre_id, start_time and end_time. 
+    excluding_show_id can be provided to exclude a show (useful for the edit case).
+    """
+    from .models import Show
+    
+    # Fetch all shows for the theatre
+    all_shows = Show.query.filter(Show.theatre_id == theatre_id).all()
+
+    # Filter shows that overlap with the given time frame
+    overlapping = [
+        show for show in all_shows
+        if (show.start_time < end_time and show.end_time > start_time) and show.id != excluding_show_id
+    ]
+    
+    return overlapping
+
 
 @main.route('/show', methods=['POST'])
 @jwt_required()
@@ -176,14 +194,26 @@ def add_show():
     User must be authenticated as an admin
     '''
 
-    from .models import Show, Tag
+    from .models import Show, Tag, Theatre
     from . import db
 
     try:
         data = request.get_json()
         start_time = datetime.strptime(data['startTime'], '%Y-%m-%dT%H:%M')
         duration = datetime.strptime(data['duration'], '%H:%M').time() # convert the string to time
+
+        end_time = start_time + timedelta(hours=duration.hour, minutes=duration.minute)
+        if overlapping_shows(data['theatreId'], start_time, end_time):
+            return jsonify({'message': 'Another show is scheduled during this time at the given theatre.'}), 400
+
         new_show = Show(name=data['name'], ticket_price=data['ticketPrice'], theatre_id=data['theatreId'], start_time=start_time, duration=duration)
+
+        # getting capacity
+        theatre = Theatre.query.get(data['theatreId'])
+        if not theatre:
+            return jsonify({'message': 'Theatre not found.'}), 404
+        
+        new_show.capacity = theatre.capacity
         tags_data = data['tags']
         tags = []
         for tag_name in tags_data:
@@ -218,13 +248,16 @@ def edit_show(show_id):
 
     try:
         data = request.get_json()
+        print(data)
         show = Show.query.get_or_404(show_id)
         show.name = data.get('name', show.name)
         show.ticket_price = data.get('ticketPrice', show.ticket_price)
         show.theatre_id = data.get('theatreId', show.theatre_id)
 
         if 'startTime' in data:
+            print(data['startTime'])
             show.start_time = datetime.strptime(data['startTime'], '%Y-%m-%dT%H:%M')
+
         if 'duration' in data:
             show.duration = datetime.strptime(data['duration'], '%H:%M').time() # convert the string to time
 
@@ -240,6 +273,10 @@ def edit_show(show_id):
                 tags.append(tag)
 
             show.tags = tags  # Update tags of show
+
+        end_time = show.start_time + timedelta(hours=show.duration.hour, minutes=show.duration.minute)
+        if overlapping_shows(show.theatre_id, show.start_time, end_time, excluding_show_id=show_id):
+            return jsonify({'message': 'Another show is scheduled during this time at the given theatre.'}), 400
 
         db.session.commit()
 
@@ -375,15 +412,19 @@ def book_show():
     show = Show.query.get(show_id)
     if show is None:
         return jsonify({'message': 'Show not found.'}), 404
-    
-    theatre = show.theatre
-    if theatre.capacity < num_tickets:
+
+    # Check if the booking is made at least 30 minutes before the show start time
+    if datetime.utcnow() + timedelta(minutes=30) >= show.start_time:
+        return jsonify({'message': 'You can only book at least 30 minutes before the show start time.'}), 400
+
+    # Check if there are enough seats available for the specific show
+    if show.capacity < num_tickets:
         return jsonify({'message': 'Not enough seats available.'}), 400
 
     user_id = get_jwt_identity()
     booking = Booking(user_id=user_id, show_id=show_id, number_of_tickets=num_tickets)
     db.session.add(booking)
-    theatre.capacity -= num_tickets
+    show.capacity -= num_tickets  
     db.session.commit()
     return jsonify({'message': 'Booking successful.'}), 200
 
@@ -410,11 +451,156 @@ def get_user_bookings():
         result.append({
             'booking_id': booking.id,
             'show_name': show.name,
-            'show_timing': show.start_time,
-            'show_duration': show.duration,
+            'show_timing': show.start_time.strftime('%Y-%m-%d %H:%M:%S') if show.start_time else None,
+            'show_duration': show.duration.strftime('%H:%M') if show.duration else None ,
             'theatre_name': theatre.name,
             'theare_place': theatre.place,
             'number_of_tickets': booking.number_of_tickets
         })
 
     return jsonify(result)
+
+@main.route('/shows/<int:show_id>/review', methods=['POST'])
+@jwt_required()
+def add_review(show_id):
+    from .models import Review, Show, Booking
+    from . import db
+
+    # Get the user's ID from the JWT token
+    user_id = get_jwt_identity()
+
+    # Check if the show exists
+    show = Show.query.get(show_id)
+    if not show:
+        return jsonify({'message': 'Show not found'}), 404
+
+    # Validate user has booked the show
+    user_booking = Booking.query.filter_by(user_id=user_id, show_id=show_id).first()
+    if not user_booking:
+        return jsonify({'message': 'You must book and watch the show before reviewing'}), 403
+
+    # Check if the current time is past the show's end time
+    if datetime.utcnow() < show.end_time:
+        return jsonify({'message': 'You can only review after the show has ended'}), 403
+
+    # Parse request data
+    data = request.get_json()
+
+    # Validate data
+    if not data:
+        return jsonify({'message': 'No input data provided'}), 400
+    if 'rating' not in data:
+        return jsonify({'message': 'Rating is required'}), 400
+    if not (1 <= data['rating'] <= 5):  # Assuming a rating from 1 to 5
+        return jsonify({'message': 'Rating must be between 1 and 5'}), 400
+
+    # Check if the user has already reviewed this show
+    existing_review = Review.query.filter_by(user_id=user_id, show_id=show_id).first()
+    if existing_review:
+        return jsonify({'message': 'You have already reviewed this show'}), 400
+
+    # Create a new review
+    review = Review(
+        rating=data['rating'],
+        text=data.get('text', ''),  # It's okay if the text is empty or not provided
+        user_id=user_id,
+        show_id=show_id
+    )
+
+    # Add to database
+    db.session.add(review)
+    db.session.commit()
+
+    return jsonify({'message': 'Review added successfully', 'review': review.to_dict()}), 201
+
+@main.route('/booking/<int:booking_id>', methods=['GET'])
+@jwt_required()
+def get_booking_details(booking_id):
+    from .models import Booking, Show
+
+    try:
+        booking = Booking.query.get(booking_id)
+        
+        # Check if booking exists
+        if not booking:
+            return jsonify({"message": "Booking not found."}), 404
+
+        # Assuming you have a to_dict() method in your Booking model
+        booking_details = booking.to_dict()
+
+        # Fetch show details
+        show = Show.query.get(booking.show_id)
+        if show:
+            booking_details['show'] = show.to_dict()
+
+        return jsonify(booking_details), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    
+
+@main.route('/show/<int:show_id>/reviews', methods=['GET'])
+@jwt_required()
+def get_show_reviews(show_id):
+    from .models import Review, Show
+
+    try:
+        reviews = Review.query.filter_by(show_id=show_id).all()
+
+        show = Show.query.get(show_id)
+        if not show:
+            return jsonify({"message": "Show not found"}), 404
+        show_name = show.name
+        
+        # Transforming the reviews into a list of dictionaries for jsonify to handle
+        reviews_list = [review.to_dict() for review in reviews]
+        
+        return jsonify({"show_name": show_name, "reviews": reviews_list}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@main.route('/summary', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_summary():
+    from .models import User, Show, Theatre, Booking, Review
+    from . import db
+
+    try:
+        total_users = User.query.count()
+        total_theatres = Theatre.query.count()
+        total_shows = Show.query.count()
+        total_bookings = Booking.query.count()
+        total_reviews = Review.query.count()
+        
+        # Calculate the average rating from all reviews
+        avg_rating = db.session.query(db.func.avg(Review.rating)).scalar()
+
+        # Get the top 3 shows based on the number of bookings
+        top_shows = db.session.query(Show.name, db.func.sum(Booking.number_of_tickets).label('total_tickets')).\
+                    join(Booking, Booking.show_id == Show.id).\
+                    group_by(Show.name).\
+                    order_by(db.desc('total_tickets')).\
+                    limit(3).\
+                    all()
+
+        # Get the top 3 users who have written the most reviews
+        top_reviewers = db.session.query(User.username, db.func.count(Review.id).label('total_reviews')).\
+                        join(Review, Review.user_id == User.id).\
+                        group_by(User.username).\
+                        order_by(db.desc('total_reviews')).\
+                        limit(3).\
+                        all()
+
+        return jsonify({
+            'total_users': total_users,
+            'total_theatres': total_theatres,
+            'total_shows': total_shows,
+            'total_bookings': total_bookings,
+            'total_reviews': total_reviews,
+            'average_rating': float(avg_rating) if avg_rating else None,
+            'top_shows': [{'show_name': s[0], 'tickets_booked': s[1]} for s in top_shows],
+            'top_reviewers': [{'user_name': u[0], 'reviews_written': u[1]} for u in top_reviewers]
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500

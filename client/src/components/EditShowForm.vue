@@ -135,8 +135,8 @@ export default {
       const data = {
         name: this.show.name,
         tags: this.tags.split(",").map((tag) => tag.trim()),
-        ticketPrice: this.show.ticketPrice,
-        startTime: this.show.startTime,
+        ticketPrice: this.show.ticket_price,
+        startTime: this.show.start_time,
         duration: this.show.duration.match(/\d{2}:\d{2}:\d{2}/)
           ? this.show.duration.slice(0, -3)
           : this.show.duration,

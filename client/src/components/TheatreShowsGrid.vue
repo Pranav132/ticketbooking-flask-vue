@@ -75,9 +75,13 @@
             <p class="card-text">Duration: {{ show.duration }}</p>
             <p class="card-text">Start Time: {{ show.start_time }}</p>
             <p class="card-text">Price: ₹{{ show.ticket_price }}</p>
+            <p class="card-text">Seats: {{ show.capacity }}</p>
             <p class="card-text">{{ averageRating(show.reviews) }}</p>
 
-            <router-link v-if="canBook(show) === 1" :to="'/book/' + show.id">
+            <router-link
+              v-if="canBook(show) === 1 && show.capacity > 0"
+              :to="'/book/' + show.id"
+            >
               <button class="btn btn-success">Book</button>
             </router-link>
             <button v-else class="btn btn-secondary" disabled>
@@ -86,8 +90,8 @@
 
             <router-link :to="'/ratings/' + show.id">
               <button
-                v-if="reviews && !(reviews.length === 0)"
-                class="btn btn-primary"
+                v-if="show.reviews && !(show.reviews.length === 0)"
+                class="btn btn-primary m-3"
               >
                 View Ratings
               </button>
@@ -208,7 +212,9 @@ export default {
       );
       const avgRating = totalRating / reviews.length;
 
-      return isNaN(avgRating) ? "No Ratings yet" : "Rating" + avgRating;
+      return isNaN(avgRating)
+        ? "No Ratings yet"
+        : "Rating: " + avgRating + "/5";
     },
   },
   created() {

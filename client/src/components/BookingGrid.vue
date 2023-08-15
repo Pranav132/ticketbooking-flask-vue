@@ -99,8 +99,21 @@ export default {
   },
   methods: {
     canRateShow(booking) {
+      console.log(booking.show_timing);
       const showEndTime = new Date(booking.show_timing);
-      showEndTime.setHours(showEndTime.getHours() + booking.show_duration);
+
+      // Split the show_duration into hours and minutes
+      const [hours, minutes] = booking.show_duration.split(":").map(Number);
+
+      // Add the hours and minutes to the showEndTime
+      showEndTime.setHours(
+        showEndTime.getHours() + hours,
+        showEndTime.getMinutes() + minutes
+      );
+
+      console.log(showEndTime);
+      console.log(new Date());
+
       return new Date() > showEndTime;
     },
   },

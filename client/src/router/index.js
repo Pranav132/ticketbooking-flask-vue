@@ -12,6 +12,10 @@ import EditShowView from '../views/EditShowView.vue'
 import UserDashboardView from '../views/UserDashboardView.vue'
 import UserTheatreView from '../views/UserTheatreView.vue'
 import TheatreWithShowsView from '../views/TheatreWithShowsView.vue'
+import BookShowView from '../views/BookShowView.vue'
+import RateShowView from '../views/RateShowView.vue'
+import ShowReviewsView from '../views/ShowReviewsView.vue'
+import SummaryView from '../views/SummaryView.vue'
 
 const routes = [
   {
@@ -77,6 +81,30 @@ const routes = [
     }
   },
   {
+    path: '/book/:id',
+    name: 'book-show',
+    component: BookShowView,
+    meta: {
+      requiresAuth: true,
+    }
+  },
+  {
+    path: '/rate_show/:id',
+    name: 'rate-show',
+    component: RateShowView,
+    meta: {
+      requiresAuth: true,
+    }
+  },
+  {
+    path: '/ratings/:id',
+    name: 'ratings',
+    component: ShowReviewsView,
+    meta: {
+      requiresAuth: true,
+    }
+  },
+  {
     path: '/add-theatre',
     name: 'add-theatre',
     component: AddTheatreView,
@@ -116,6 +144,15 @@ const routes = [
     path: '/edit-show/:id',
     name: 'edit-show',
     component: EditShowView,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/summary',
+    name: 'summary',
+    component: SummaryView,
     meta: {
       requiresAuth: true,
       requiresAdmin: true

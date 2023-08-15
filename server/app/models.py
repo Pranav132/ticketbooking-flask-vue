@@ -43,7 +43,7 @@ showtags = db.Table('showtags',
 class Show(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128))
-    tags = db.Column(db.String(128))
+    # tags = db.Column(db.String(128))
     ticket_price = db.Column(db.Float)
     theatre_id = db.Column(db.Integer, db.ForeignKey('theatre.id'))
     start_time = db.Column(db.DateTime)
@@ -51,6 +51,7 @@ class Show(db.Model):
     tags = db.relationship('Tag', secondary=showtags, lazy='subquery',
         backref=db.backref('shows', lazy=True))
     reviews = db.relationship('Review', back_populates='show')
+    capacity = db.Column(db.Integer)
 
     @property
     def end_time(self):
@@ -66,7 +67,8 @@ class Show(db.Model):
             'duration': str(self.duration),  # converting time object to string
             'end_time': self.end_time.strftime('%Y-%m-%d %H:%M:%S'),  # using the end_time property and converting datetime object to string
             'tags': [tag.to_dict() for tag in self.tags], 
-            'reviews': [review.to_dict() for review in self.reviews]
+            'reviews': [review.to_dict() for review in self.reviews],
+            'capacity': self.capacity
         }
         
     
@@ -86,6 +88,13 @@ class Booking(db.Model):
     show_id = db.Column(db.Integer, db.ForeignKey('show.id'))
     number_of_tickets = db.Column(db.Integer)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'show_id': self.show_id,
+            'number_of_tickets': self.number_of_tickets
+        }
 
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)

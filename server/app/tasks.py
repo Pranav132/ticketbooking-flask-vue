@@ -98,11 +98,10 @@ def export_theatre_as_csv(theatre_id):
     # Send an email.
     send_email(user, f"CSV for Theatre {theatre_id}", f"CSV generation complete. It's at this path in your file system: {file_path}")
 
-import logging
-
-logger = logging.getLogger(__name__)
-
+# testing celery
 @celery.task
 def simple_task():
-    logger.info("Simple task executed!")
+    print("Simple task is running!")
+    time.sleep(5)
+    print("Simple task finished!")
 
